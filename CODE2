@@ -1,0 +1,68 @@
+CODE 2
+
+# Import necessary libraries
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler, LabelEncoder
+from sklearn.linear_model import LinearRegression
+from sklearn.tree import DecisionTreeRegressor
+from xgboost import XGBRegressor
+
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.feature_selection import RFE
+
+# Load the dataset
+df = pd.read_csv("house_prices.csv")
+
+# Display basic info
+print(df.head())
+print(df.info())
+
+# Handle missing values (fill with median for numerical, mode for categorical)
+df.fillna(df.median(numeric_only=True), inplace=True)
+df.fillna(df.mode().iloc[0], inplace=True)
+
+# Encode categorical variables
+categorical_cols = df.select_dtypes(include=['object']).columns
+
+for col in categorical_cols:
+    df[col] = LabelEncoder().fit_transform(df[col])
+
+# Define features (X) and target variable (y)
+X = df.drop(columns=["Price"])  # Replace 'Price' with the actual target column name
+y = df["Price"]
+
+# Split the dataset into training and testing sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Scale numerical features
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# Train models
+models = {
+    "Linear Regression": LinearRegression(),
+    "Decision Tree": DecisionTreeRegressor(max_depth=5, random_state=42),
+    "XGBoost": XGBRegressor(n_estimators=100, learning_rate=0.1, random_state=42)
+}
+
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_test)
+
+    print(f"\nModel: {name}")
+    print(f"MAE: {mean_absolute_error(y_test, y_pred):.2f}")
+    print(f"RMSE: {np.sqrt(mean_squared_error(y_test, y_pred)):.2f}")
+    print(f"R² Score: {r2_score(y_test, y_pred):.2f}")
+
+# Feature Selection using RFE (for Linear Regression)
+selector = RFE(LinearRegression(), n_features_to_select=5)
+selector.fit(X_train, y_train)
+selected_features = X.columns[selector.support_]
+
+print("\nTop 5 Selected Features:", selected_features)
